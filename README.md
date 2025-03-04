@@ -8,8 +8,8 @@
 
 [DemoReply](reply.md)
 
-![Mini-Bolt.new](IMG276)
-![Mini-Bolt.new](IMG277)
+![Mini-Bolt.new](https://github.com/Dwsy/Mini-Bolt.new-demo-blog/blob/main/IMG276.jpg)
+![Mini-Bolt.new](https://github.com/Dwsy/Mini-Bolt.new-demo-blog/blob/main/IMG277.jpg)
 
 ------
 # 个人博客
