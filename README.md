@@ -8,6 +8,9 @@
 
 [DemoReply](reply.md)
 
+![Mini-Bolt.new](IMG276)
+![Mini-Bolt.new](IMG277)
+
 ------
 # 个人博客
 
