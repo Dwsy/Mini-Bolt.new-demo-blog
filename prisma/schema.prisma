@@ -1,0 +1,73 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  password      String
+  image         String?
+  role          String    @default("USER") // 注意：SQLite不支持枚举，使用String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  posts         Post[]
+}
+
+model Post {
+  id            String    @id @default(cuid())
+  title         String
+  slug          String    @unique
+  content       String
+  excerpt       String?
+  featured      Boolean   @default(false)
+  published     Boolean   @default(false)
+  viewCount     Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  author        User      @relation(fields: [authorId], references: [id])
+  authorId      String
+  category      Category? @relation(fields: [categoryId], references: [id])
+  categoryId    String?
+  tags          TagsOnPosts[]
+  comments      Comment[]
+}
+
+model Category {
+  id            String    @id @default(cuid())
+  name          String    @unique
+  slug          String    @unique
+  description   String?
+  posts         Post[]
+}
+
+model Tag {
+  id            String    @id @default(cuid())
+  name          String    @unique
+  slug          String    @unique
+  posts         TagsOnPosts[]
+}
+
+model TagsOnPosts {
+  post          Post      @relation(fields: [postId], references: [id])
+  postId        String
+  tag           Tag       @relation(fields: [tagId], references: [id])
+  tagId         String
+
+  @@id([postId, tagId])
+}
+
+model Comment {
+  id            String    @id @default(cuid())
+  content       String
+  authorName    String
+  authorEmail   String
+  createdAt     DateTime  @default(now())
+  post          Post      @relation(fields: [postId], references: [id])
+  postId        String
+}
