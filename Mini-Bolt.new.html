@@ -1,0 +1,1018 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://code.jquery.com https://unpkg.com https://d3js.org https://threejs.org https://cdn.plot.ly https://stackpath.bootstrapcdn.com https://maps.googleapis.com https://cdn.tailwindcss.com https://ajax.googleapis.com https://kit.fontawesome.com https://cdn.datatables.net https://maxcdn.bootstrapcdn.com https://code.highcharts.com https://tako-static-assets-production.s3.amazonaws.com https://www.youtube.com https://fonts.googleapis.com https://fonts.gstatic.com https://pfst.cf2.poecdn.net https://puc.poecdn.net https://i.imgur.com https://wikimedia.org https://*.icons8.com https://*.giphy.com https://picsum.photos https://images.unsplash.com; frame-src 'self' https://www.youtube.com https://trytako.com; child-src 'self'; manifest-src 'self'; worker-src 'self'; connect-src 'self' blob:; navigate-to 'self'; upgrade-insecure-requests; block-all-mixed-content;">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>代码结构生成器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/jszip@3.10.1/dist/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+        
+        :root {
+            /* 深色主题颜色 */
+            --primary-color: #6366f1;
+            --secondary-color: #8b5cf6;
+            --accent-color: #ec4899;
+            --background-dark: #111827;
+            --card-dark: #1f2937;
+            --text-light: #f9fafb;
+            --text-gray: #9ca3af;
+            
+            /* 浅色主题颜色 */
+            --background-light: #f3f4f6;
+            --card-light: #ffffff;
+            --text-dark: #111827;
+            --text-gray-dark: #4b5563;
+            
+            /* 当前应用的主题变量 */
+            --background-color: var(--background-dark);
+            --card-color: var(--card-dark);
+            --text-color: var(--text-light);
+            --text-color-secondary: var(--text-gray);
+        }
+        
+        /* 浅色主题类 */
+        .light-theme {
+            --background-color: var(--background-light);
+            --card-color: var(--card-light);
+            --text-color: var(--text-dark);
+            --text-color-secondary: var(--text-gray-dark);
+        }
+        
+        .glass-effect {
+            background: rgba(31, 41, 55, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 24px 0 rgba(0, 0, 0, 0.3);
+        }
+        
+        .light-theme .glass-effect {
+            background: rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 24px 0 rgba(0, 0, 0, 0.1);
+        }
+        
+        .gradient-border {
+            position: relative;
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+        
+        .gradient-border::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 0.5rem;
+            padding: 1px;
+            background: linear-gradient(to right, var(--primary-color), var(--secondary-color), var(--accent-color));
+            -webkit-mask: 
+                linear-gradient(#fff 0 0) content-box, 
+                linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+        }
+        
+        .file-tree ul {
+            list-style-type: none;
+            padding-left: 1.5rem;
+        }
+        
+        .file-tree li {
+            position: relative;
+            padding: 2px 0;
+        }
+        
+        .file-tree li::before {
+            content: '';
+            position: absolute;
+            left: -1rem;
+            top: 0.5rem;
+            width: 0.75rem;
+            height: 0.75rem;
+        }
+        
+        .file-tree li.folder::before {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%238b5cf6' viewBox='0 0 24 24'%3E%3Cpath d='M20 5h-8.586l-2-2H4c-1.103 0-2 .897-2 2v14c0 1.103.897 2 2 2h16c1.103 0 2-.897 2-2V7c0-1.103-.897-2-2-2z'%3E%3C/path%3E%3C/svg%3E");
+            background-size: contain;
+        }
+        
+        .file-tree li.file::before {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%236366f1' viewBox='0 0 24 24'%3E%3Cpath d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 2 5 5h-5V4zM6 20V4h5v7h7v9H6z'%3E%3C/path%3E%3C/svg%3E");
+            background-size: contain;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(31, 41, 55, 0.5);
+            border-radius: 4px;
+        }
+        
+        .light-theme .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(243, 244, 246, 0.5);
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(99, 102, 241, 0.5);
+            border-radius: 4px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(99, 102, 241, 0.8);
+        }
+        
+        .tab-active {
+            color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        
+        .glow-effect {
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.5);
+        }
+        
+        .fade-enter-active, .fade-leave-active {
+            transition: opacity 0.3s;
+        }
+        .fade-enter-from, .fade-leave-to {
+            opacity: 0;
+        }
+        
+        /* 更新使用新的主题变量 */
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+        }
+        
+        /* 浅色主题下的样式调整 */
+        .light-theme input, 
+        .light-theme textarea, 
+        .light-theme .bg-gray-800 {
+            background-color: #f8fafc !important;
+            border-color: #e2e8f0 !important;
+            color: #1e293b !important;
+        }
+        
+        .light-theme .text-gray-400 {
+            color: #64748b !important;
+        }
+        
+        .light-theme .text-gray-300 {
+            color: #475569 !important;
+        }
+        
+        .light-theme .bg-gray-700 {
+            background-color: #e2e8f0 !important;
+        }
+        
+        .light-theme .border-gray-700 {
+            border-color: #e2e8f0 !important;
+        }
+        
+        .light-theme .light-theme-toggle {
+            background-color: #f8fafc !important;
+            border: 1px solid #e2e8f0;
+        }
+        
+        /* 给浅色主题下的卡片添加轻微阴影 */
+        .light-theme .gradient-border {
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+        
+        /* 确保文件树图标在浅色主题下可见 */
+        .light-theme .file-tree li.folder::before {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%237c3aed' viewBox='0 0 24 24'%3E%3Cpath d='M20 5h-8.586l-2-2H4c-1.103 0-2 .897-2 2v14c0 1.103.897 2 2 2h16c1.103 0 2-.897 2-2V7c0-1.103-.897-2-2-2z'%3E%3C/path%3E%3C/svg%3E");
+        }
+        
+        .light-theme .file-tree li.file::before {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%234f46e5' viewBox='0 0 24 24'%3E%3Cpath d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 2 5 5h-5V4zM6 20V4h5v7h7v9H6z'%3E%3C/path%3E%3C/svg%3E");
+        }
+        
+        /* 确保通知在浅色主题下有合适的颜色 */
+        .light-theme .notification-success {
+            background-color: rgba(240, 253, 244, 0.9);
+            color: #166534;
+        }
+        
+        .light-theme .notification-error {
+            background-color: rgba(254, 242, 242, 0.9);
+            color: #b91c1c;
+        }
+        
+        .light-theme .notification-info {
+            background-color: rgba(239, 246, 255, 0.9);
+            color: #1e40af;
+        }
+    </style>
+</head>
+<body class="min-h-screen font-['Noto_Sans_SC',sans-serif]">
+    <div id="app" class="container mx-auto px-4 py-8 max-w-7xl">
+        <header class="mb-8 text-center">
+            <div class="flex justify-end mb-2">
+                <button @click="toggleTheme" class="rounded-full p-2 bg-gray-800 hover:bg-gray-700 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900">
+                    <!-- 月亮图标 (深色模式) -->
+                    <svg v-if="isDarkTheme" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-yellow-300" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
+                    </svg>
+                    <!-- 太阳图标 (浅色模式) -->
+                    <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-yellow-500" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+            </div>
+            <h1 class="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 inline-block">
+                Mini-Bolt.new
+            </h1>
+            <p class="text-gray-400 mt-2 max-w-3xl mx-auto">
+               一键生成Claude生成结构化提示词，解析返回的代码并生成可视化文件结构
+            </p>
+        </header>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+            <!-- 左侧面板 -->
+            <div class="lg:col-span-2">
+   
+                
+                <div class="glass-effect gradient-border rounded-lg p-4">
+                    <h2 class="text-xl font-semibold text-indigo-400 mb-4 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 010-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zM12 2a1 1 0 01.967.744L14.146 7.2 17.5 9.134a1 1 0 010 1.732l-3.354 1.935-1.18 4.455a1 1 0 01-1.933 0L9.854 12.8 6.5 10.866a1 1 0 010-1.732l3.354-1.935 1.18-4.455A1 1 0 0112 2z" clip-rule="evenodd"></path>
+                        </svg>
+                        项目需求输入
+                    </h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label for="projectName" class="block text-sm font-medium text-gray-300 mb-1">项目名称</label>
+                            <input id="projectName" v-model="projectName" type="text" class="w-full bg-gray-800 border border-gray-700 rounded-md py-2 px-3 text-base text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" placeholder="输入项目名称">
+                        </div>
+                        
+                        <div>
+                            <label for="techStack" class="block text-sm font-medium text-gray-300 mb-1">技术栈</label>
+                            <div class="flex flex-wrap gap-2 mb-2">
+                                <button v-for="tech in techOptions" :key="tech" @click="toggleTech(tech)" :class="[
+                                        'px-2 py-1 rounded-md text-xs transition-all',
+                                        selectedTechs.includes(tech) 
+                                            ? 'bg-indigo-600 text-white' 
+                                            : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                                    ]">
+                                    {{ tech }}
+                                </button>
+                            </div>
+                            <input id="techStack" v-model="customTech" type="text" class="w-full bg-gray-800 border border-gray-700 rounded-md py-2 px-3 text-base text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" placeholder="其他技术栈 (用逗号分隔)">
+                        </div>
+
+                        <div>
+                            <label for="projectTheme" class="block text-sm font-medium text-gray-300 mb-1">主题模式</label>
+                            <div class="flex flex-wrap gap-2 mb-2">
+                                <button @click="projectTheme = 'dark'" :class="[
+                                        'px-2 py-1 rounded-md text-xs transition-all flex items-center',
+                                        projectTheme === 'dark' 
+                                            ? 'bg-indigo-600 text-white' 
+                                            : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                                    ]">
+                                    <span class="w-3 h-3 rounded-full bg-gray-900 mr-1 border border-gray-700"></span>
+                                    暗色
+                                </button>
+                                <button @click="projectTheme = 'light'" :class="[
+                                        'px-2 py-1 rounded-md text-xs transition-all flex items-center',
+                                        projectTheme === 'light' 
+                                            ? 'bg-indigo-600 text-white' 
+                                            : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                                    ]">
+                                    <span class="w-3 h-3 rounded-full bg-white mr-1 border border-gray-300"></span>
+                                    亮色
+                                </button>
+                                <button @click="projectTheme = 'both'" :class="[
+                                        'px-2 py-1 rounded-md text-xs transition-all flex items-center',
+                                        projectTheme === 'both' 
+                                            ? 'bg-indigo-600 text-white' 
+                                            : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                                    ]">
+                                    <span class="w-3 h-3 rounded-full bg-gradient-to-r from-gray-900 to-white mr-1 border border-gray-500"></span>
+                                    二者
+                                </button>
+                            </div>
+                            
+                            <div class="mt-2 p-2 bg-gray-800 bg-opacity-50 rounded-md text-xs text-gray-400 border border-gray-700">
+                                <div class="flex items-center mb-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1 text-indigo-400" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2h.01a1 1 0 100-2H9z" clip-rule="evenodd" />
+                                    </svg>
+                                    主题预览
+                                </div>
+                                <div class="flex gap-2">
+                                    <div v-if="projectTheme === 'dark' || projectTheme === 'both'" class="flex-1 bg-gray-900 p-2 rounded-md border border-gray-700">
+                                        <div class="h-2 w-1/2 bg-indigo-600 rounded-sm mb-1"></div>
+                                        <div class="h-1 w-3/4 bg-gray-700 rounded-sm"></div>
+                                    </div>
+                                    <div v-if="projectTheme === 'light' || projectTheme === 'both'" class="flex-1 bg-white p-2 rounded-md border border-gray-300">
+                                        <div class="h-2 w-1/2 bg-indigo-500 rounded-sm mb-1"></div>
+                                        <div class="h-1 w-3/4 bg-gray-200 rounded-sm"></div>
+                                    </div>
+                                </div>
+                                <div class="mt-1">
+                                    <span class="text-indigo-400">提示：</span> 选择"二者"可让您的项目同时支持暗色和亮色模式，并允许用户切换。
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label for="requirements" class="block text-sm font-medium text-gray-300 mb-1">项目需求描述</label>
+                            <textarea id="requirements" v-model="requirements" rows="6" class="w-full bg-gray-800 border border-gray-700 rounded-md py-2 px-3 text-base text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all custom-scrollbar" placeholder="详细描述您的项目需求、功能特性等..."></textarea>
+                        </div>
+                        
+                        <button @click="generatePrompt" class="w-full py-2 px-4 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white font-medium rounded-md hover:opacity-90 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900">
+                            生成提示词
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 右侧面板 -->
+            <div class="lg:col-span-3">
+                <div class="glass-effect gradient-border rounded-lg p-4 mb-6">
+                    <h2 class="text-xl font-semibold text-indigo-400 mb-4 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"></path>
+                        </svg>
+                        使用指南
+                    </h2>
+                    <div class="space-y-3 text-gray-300 text-sm">
+                        <p>1. 在下方输入框中填写项目需求和技术栈</p>
+                        <p>2. 点击「生成提示词」按钮获取AI提示词</p>
+                        <p>3. 复制提示词并发送给AI助手</p>
+                        <p>4. 将AI返回的代码粘贴到「解析结果」面板</p>
+                        <p>5. 查看文件结构并可选择下载生成的项目文件</p>
+                    </div>
+                </div>
+                <div class="glass-effect gradient-border rounded-lg overflow-hidden">
+                    <div class="flex border-b border-gray-700">
+                        <button v-for="tab in tabs" :key="tab.id" @click="activeTab = tab.id" :class="[
+                                'py-3 px-4 font-medium text-sm border-b-2 transition-all',
+                                activeTab === tab.id ? 'tab-active border-indigo-500' : 'border-transparent text-gray-400 hover:text-gray-300'
+                            ]">
+                            <span class="flex items-center">
+                                <span v-html="tab.icon" class="mr-2"></span>
+                                {{ tab.name }}
+                            </span>
+                        </button>
+                    </div>
+                    
+                    <div class="p-4">
+                        <!-- 提示词输出 -->
+                        <div v-if="activeTab === 'prompt'" class="space-y-4">
+                            <div v-if="generatedPrompt" class="relative">
+                                <pre class="bg-gray-800 rounded-md p-4 text-gray-300 text-sm overflow-auto custom-scrollbar max-h-[60vh]">{{ generatedPrompt }}</pre>
+                                <button @click="copyPrompt" class="absolute top-2 right-2 p-2 bg-gray-700 rounded-md hover:bg-gray-600 transition-all">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                            <div v-else="" class="text-center py-20 text-gray-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
+                                </svg>
+                                <p>填写左侧表单并点击「生成提示词」按钮</p>
+                            </div>
+                        </div>
+                        
+                        <!-- 解析结果 -->
+                        <div v-if="activeTab === 'parse'" class="space-y-4">
+                            <textarea v-model="parseInput" placeholder="将AI返回的代码粘贴到这里..." rows="8" class="w-full bg-gray-800 border border-gray-700 rounded-md py-2 px-3 text-base text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all custom-scrollbar"></textarea>
+                            
+                            <button @click="parseCode" class="w-full py-2 px-4 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white font-medium rounded-md hover:opacity-90 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900">
+                                解析代码
+                            </button>
+                            
+                            <div v-if="parseError" class="bg-red-900/50 border border-red-800 rounded-md p-4 text-red-300 text-sm">
+                                {{ parseError }}
+                            </div>
+                        </div>
+                        
+                        <!-- 文件结构 -->
+                        <div v-if="activeTab === 'files'" class="space-y-4">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-medium text-indigo-300">
+                                    项目文件结构
+                                </h3>
+                                <button v-if="parsedFiles.length > 0" @click="downloadFiles" class="py-2 px-4 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 flex items-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                    </svg>
+                                    下载项目文件
+                                </button>
+                            </div>
+                            
+                            <div v-if="parsedFiles.length > 0" class="bg-gray-800 rounded-md p-4 max-h-[60vh] overflow-auto custom-scrollbar">
+                                <div class="file-tree">
+                                    <ul>
+                                        <li class="folder font-medium text-indigo-300">
+                                            {{ projectInfo.projectName || '项目根目录' }}
+                                            <ul>
+                                                <template v-for="item in fileTree" :key="item.path">
+                                                    <li :class="item.type === 'folder' ? 'folder' : 'file'" @click="item.type === 'file' ? selectFile(item.filePath) : null" :style="item.type === 'file' ? 'cursor: pointer' : ''">
+                                                        <span :class="{'text-indigo-400 hover:underline': item.type === 'file'}">
+                                                            {{ item.name }}
+                                                        </span>
+                                                        <template v-if="item.children &amp;&amp; item.children.length">
+                                                            <ul>
+                                                                <template v-for="child in item.children" :key="child.path">
+                                                                    <li :class="child.type === 'folder' ? 'folder' : 'file'" @click.stop="child.type === 'file' ? selectFile(child.filePath) : null" :style="child.type === 'file' ? 'cursor: pointer' : ''">
+                                                                        <span :class="{'text-indigo-400 hover:underline': child.type === 'file'}">
+                                                                            {{ child.name }}
+                                                                        </span>
+                                                                        <template v-if="child.children &amp;&amp; child.children.length">
+                                                                            <ul>
+                                                                                <template v-for="grandchild in child.children" :key="grandchild.path">
+                                                                                    <li :class="grandchild.type === 'folder' ? 'folder' : 'file'" @click.stop="grandchild.type === 'file' ? selectFile(grandchild.filePath) : null" :style="grandchild.type === 'file' ? 'cursor: pointer' : ''">
+                                                                                        <span :class="{'text-indigo-400 hover:underline': grandchild.type === 'file'}">
+                                                                                            {{ grandchild.name }}
+                                                                                        </span>
+                                                                                        <template v-if="grandchild.children &amp;&amp; grandchild.children.length">
+                                                                                            <!-- 更深层级在这里递归 -->
+                                                                                            <ul>
+                                                                                                <li v-for="item in grandchild.children" :key="item.path" :class="item.type === 'folder' ? 'folder' : 'file'">
+                                                                                                    <span @click.stop="item.type === 'file' ? selectFile(item.filePath) : null" :class="{'text-indigo-400 hover:underline': item.type === 'file'}">
+                                                                                                        {{ item.name }}
+                                                                                                    </span>
+                                                                                                </li>
+                                                                                            </ul>
+                                                                                        </template>
+                                                                                    </li>
+                                                                                </template>
+                                                                            </ul>
+                                                                        </template>
+                                                                    </li>
+                                                                </template>
+                                                            </ul>
+                                                        </template>
+                                                    </li>
+                                                </template>
+                                            </ul>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div v-else="" class="text-center py-20 text-gray-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                                <p>请先解析AI返回的代码</p>
+                            </div>
+                        </div>
+                        
+                        <!-- 文件预览 -->
+                        <div v-if="activeTab === 'preview'" class="space-y-4">
+                            <div v-if="selectedFile" class="space-y-4">
+                                <div class="flex justify-between items-center">
+                                    <h3 class="text-lg font-medium text-indigo-300 truncate">
+                                        {{ selectedFile.fileName }}
+                                    </h3>
+                                    <div class="flex items-center space-x-2">
+                                        <span class="text-xs px-2 py-1 rounded-full bg-gray-700 text-gray-300">
+                                            {{ getLanguage(selectedFile.fileName) }}
+                                        </span>
+                                        <button @click="copyFileContent" class="p-1.5 bg-gray-700 rounded-md hover:bg-gray-600 transition-all">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <pre class="bg-gray-800 rounded-md p-4 text-gray-300 text-sm overflow-auto custom-scrollbar max-h-[60vh]">{{ selectedFile.content }}</pre>
+                            </div>
+                            <div v-else="" class="text-center py-20 text-gray-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                </svg>
+                                <p>从文件列表中选择一个文件进行预览</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 通知 -->
+        <div class="fixed bottom-4 right-4 max-w-sm">
+            <transition name="fade">
+                <div v-if="notification.show" class="glass-effect rounded-lg p-4 text-white flex items-start glow-effect">
+                    <div class="mr-3 mt-0.5">
+                        <svg v-if="notification.type === 'success'" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                        </svg>
+                        <svg v-else-if="notification.type === 'error'" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                        </svg>
+                        <svg v-else="" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2h.01a1 1 0 100-2H9z" clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="font-medium">{{ notification.title }}</p>
+                        <p class="text-sm text-gray-300">{{ notification.message }}</p>
+                    </div>
+                </div>
+            </transition>
+        </div>
+    </div>
+    
+    <script>
+        const { createApp, ref, computed, watch, onMounted } = Vue;
+        var theme = "dark"
+        
+        createApp({
+            setup() {
+                // 主题切换功能
+                const isDarkTheme = ref(true);  // 默认深色主题
+                
+
+                // 检查本地存储中的主题设置
+                onMounted(() => {
+                    const savedTheme = theme
+                    if (savedTheme === 'light') {
+                        isDarkTheme.value = false;
+                        document.body.classList.add('light-theme');
+                    }
+                });
+                
+                // 切换主题
+                const toggleTheme = () => {
+                    isDarkTheme.value = !isDarkTheme.value;
+                    if (isDarkTheme.value) {
+                        document.body.classList.remove('light-theme');
+                        // localStorage.setItem('theme', 'dark');
+                        theme = "dark"
+                    } else {
+                        document.body.classList.add('light-theme');
+                        // localStorage.setItem('theme', '');
+                        dark = "light"
+                    }
+                };
+                
+                // 基础数据
+                const projectName = ref('');
+                const requirements = ref('');
+                const customTech = ref('');
+                const techOptions = ref([
+                    'Next.js', 'React', 'TypeScript', 'JavaScript', 
+                    'TailwindCSS','daisyui','shadcn','Material-UI', 'Prisma', 'MongoDB', 
+                    'PostgreSQL', 'SQLite', 'MySQL', 'Redux', 
+                    'Zustand', 'Axios', 'SWR', 'React Query'
+                ]);
+                const projectTheme = ref('dark');
+                const selectedTechs = ref(['Next.js', 'React', 'TypeScript', 'TailwindCSS','daisyui']);
+                
+                // 标签页
+                const activeTab = ref('prompt');
+                const tabs = ref([
+                    {
+                        id: 'prompt',
+                        name: '提示词',
+                        icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" /></svg>'
+                    },
+                    {
+                        id: 'parse',
+                        name: '解析结果',
+                        icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>'
+                    },
+                    {
+                        id: 'files',
+                        name: '文件结构',
+                        icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>'
+                    },
+                    {
+                        id: 'preview',
+                        name: '文件预览',
+                        icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>'
+                    }
+                ]);
+                
+                // 提示词生成
+                const generatedPrompt = ref('');
+                
+                // 代码解析
+                const parseInput = ref('');
+                const parseError = ref('');
+                const parsedFiles = ref([]);
+                const selectedFile = ref(null);
+                const projectInfo = ref({ projectName: '' });
+                
+                // 通知
+                const notification = ref({
+                    show: false,
+                    type: 'info',
+                    title: '',
+                    message: '',
+                    timeout: null
+                });
+                
+                // 切换技术栈选择
+                const toggleTech = (tech) => {
+                    if (selectedTechs.value.includes(tech)) {
+                        selectedTechs.value = selectedTechs.value.filter(t => t !== tech);
+                    } else {
+                        selectedTechs.value.push(tech);
+                    }
+                };
+                
+                // 显示通知
+                const showNotification = (type, title, message, duration = 3000) => {
+                    // 清除之前的定时器
+                    if (notification.value.timeout) {
+                        clearTimeout(notification.value.timeout);
+                    }
+                    
+                    // 设置新通知
+                    notification.value = {
+                        show: true,
+                        type,
+                        title,
+                        message,
+                        timeout: null
+                    };
+                    
+                    // 设置自动关闭
+                    notification.value.timeout = setTimeout(() => {
+                        notification.value.show = false;
+                    }, duration);
+                };
+                
+                // 生成提示词
+                const generatePrompt = () => {
+                    if (!projectName.value.trim()) {
+                        showNotification('error', '请填写项目名称', '项目名称不能为空');
+                        return;
+                    }
+                    
+                    if (!requirements.value.trim()) {
+                        showNotification('error', '请填写项目需求', '项目需求描述不能为空');
+                        return;
+                    }
+                    
+                    // 获取所有技术栈
+                    const allTechs = [...selectedTechs.value];
+                    if (customTech.value.trim()) {
+                        const customTechs = customTech.value.split(',').map(t => t.trim()).filter(t => t);
+                        allTechs.push(...customTechs);
+                    }
+                    
+                    // 生成提示词
+                    const techStackStr = allTechs.join('+');
+                    
+                    let themeDescription = '';
+                    if (projectTheme.value === 'dark') {
+                        themeDescription = '暗色主题模式，使界面有高级感';
+                    } else if (projectTheme.value === 'light') {
+                        themeDescription = '亮色主题模式，使界面清爽自然';
+                    } else if (projectTheme.value === 'both') {
+                        themeDescription = '同时支持暗色和亮色主题模式，并提供切换功能';
+                    }
+                    
+                    generatedPrompt.value = `忽略前面的上下文
+---
+你是一位资深全栈工程师，使用${techStackStr} 设计一个${projectName.value}。
+** 请注意不要mock直接使用实际代码编写后端然后调用,图片可以使用unslash **
+请您模拟产品经理提出需求和信息架构，请自己构思好功能需求和界面，然后设计 输出
+    1.后端代码
+    2.前端代码
+    3.不要mock直接使用前端调用后端
+    4.为了减少代码量可以抽取公共组件,函数
+    5.如果使用了 nextjs 那么使用13版本最佳实践,正确处理use Client,不要引入不存在的东西,需要返回正确的的配置文件，还需要处理路径引用。
+    6.可以使用稳定版本的库保证用户可以一次运行，编写详细的readme文档
+    7.如果有prisma需要保证代码准确性和提供seed（    "prisma:seed": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' prisma/seed.ts"）,如果同时使用SQLite那么需要考虑到它的特性，比如，不支持枚举类型，数据库兼容性：不同的数据库有不同的功能支持，使用 SQLite 时需要注意它不支持枚举类型
+    8.如果有Tailwind 使用CDN的方式 而不是安装库的方式,所以不需要在postcss.config.js中配置tailwindcss
+    9.使用.env配置环境变量
+----
+    功能：${requirements.value}
+主题：${themeDescription}，（运用玻璃拟态等视觉效果），遵守设计规范，注重UI细节。
+
+请按照以下格式回答输出前端工程化多文件，以便我能够自动生成相应的文件和目录结构：
+* 所有内容都输出到自定义的代码块中而不是使用markdown *
+
+## 首先，可以选择性地定义项目名称（作为顶层目录）
+
+\`\`\`generateInfo id=generateInfo1
+{
+"projectName":"${projectName.value}"
+}
+\`\`\`
+
+## 然后，对于每个需要生成的文件，请使用以下格式：
+
+\`\`\`{fileName:"文件名",filePath:"文件路径"}
+文件内容
+\`\`\`
+
+## 格式说明
+
+1. \`projectName\` 是可选的，如果提供，将作为顶层目录
+2. \`fileName\` 是必需的，指定文件名（包括扩展名）
+3. \`filePath\` 是必需的，指定文件相对路径（可以包含多级目录）
+4. 文件内容直接放在花括号块的下方，直到下一个代码块开始 
+5. 除此之外不要输出任何内容,项目生成信息可以放入generateInfo.md文件中
+6. 编写完整的readme.md文件
+7. 注意转译字符
+
+## 示例
+
+以下是一个符合要求的回答示例：
+
+\`\`\`generateInfo id=generateInfo0
+{
+"projectName":"my_project"
+}
+\`\`\`
+
+\`\`\`{fileName:"app.py",filePath:"src/app.py"}
+print("这是主应用文件")
+\`\`\`
+
+\`\`\`{fileName:"config.json",filePath:"config/config.json"}
+{
+  "name": "我的项目",
+  "version": "1.0.0"
+}
+\`\`\`
+`;
+                    
+                    activeTab.value = 'prompt';
+                    showNotification('success', '提示词已生成', '您可以复制提示词并发送给AI助手');
+                };
+                
+                // 复制提示词
+                const copyPrompt = () => {
+                    if (!generatedPrompt.value) return;
+                    
+                    navigator.clipboard.writeText(generatedPrompt.value)
+                        .then(() => {
+                            showNotification('success', '复制成功', '提示词已复制到剪贴板');
+                        })
+                        .catch(err => {
+                            showNotification('error', '复制失败', err.message || '请手动选择文本并复制');
+                        });
+                };
+                
+                // 解析代码
+                const parseCode = () => {
+                    if (!parseInput.value.trim()) {
+                        showNotification('error', '请填写解析内容', '请粘贴AI生成的代码');
+                        return;
+                    }
+                    
+                    try {
+                        // 重置错误
+                        parseError.value = '';
+                        parsedFiles.value = [];
+                        selectedFile.value = null;
+                        
+                        // 解析项目信息
+                        const generateInfoRegex = /```generateInfo[^`]*\n({[\s\S]*?})\n```/g;
+                        const generateInfoMatch = generateInfoRegex.exec(parseInput.value);
+                        
+                        if (generateInfoMatch && generateInfoMatch[1]) {
+                            try {
+                                projectInfo.value = JSON.parse(generateInfoMatch[1]);
+                            } catch (e) {
+                                console.error('解析项目信息失败:', e);
+                                projectInfo.value = { projectName: projectName.value || '未命名项目' };
+                            }
+                        } else {
+                            projectInfo.value = { projectName: projectName.value || '未命名项目' };
+                        }
+                        
+                        // 解析文件
+                        const fileRegex = /```\{fileName:"([^"]+)",filePath:"([^"]+)"\}([\s\S]*?)(?=```\{|$)/g;
+                        let match;
+                        
+                        while ((match = fileRegex.exec(parseInput.value)) !== null) {
+                            const fileName = match[1];
+                            const filePath = match[2];
+                            // 移除结尾的 ``` 如果有的话
+                            let content = match[3].trim();
+                            if (content.endsWith('```')) {
+                                content = content.substring(0, content.length - 3).trim();
+                            }
+                            
+                            parsedFiles.value.push({
+                                fileName,
+                                filePath,
+                                content
+                            });
+                        }
+                        
+                        if (parsedFiles.value.length === 0) {
+                            parseError.value = '未找到符合格式的文件代码块。请确保代码按照指定格式生成。';
+                            showNotification('error', '解析失败', '未找到符合格式的文件代码块');
+                            return;
+                        }
+                        
+                        // 解析成功，切换到文件结构标签页
+                        activeTab.value = 'files';
+                        showNotification('success', '解析成功', `共解析出 ${parsedFiles.value.length} 个文件`);
+                        
+                    } catch (error) {
+                        parseError.value = `解析出错: ${error.message}`;
+                        showNotification('error', '解析失败', error.message);
+                    }
+                };
+                
+                // 构建文件树
+                const fileTree = computed(() => {
+                    const tree = [];
+                    const pathMap = new Map();
+                    
+                    parsedFiles.value.forEach(file => {
+                        const parts = file.filePath.split('/');
+                        const fileName = parts.pop(); // 文件名就是路径的最后一部分
+                        
+                        // 对于每一级路径，确保在树中都有对应的节点
+                        let currentPath = '';
+                        let currentLevel = tree;
+                        
+                        parts.forEach(part => {
+                            currentPath = currentPath ? `${currentPath}/${part}` : part;
+                            
+                            // 检查这个路径是否已经在树中
+                            let node = pathMap.get(currentPath);
+                            
+                            if (!node) {
+                                // 如果没有，创建一个新节点
+                                node = {
+                                    name: part,
+                                    path: currentPath,
+                                    type: 'folder',
+                                    children: []
+                                };
+                                
+                                // 将节点添加到当前级别
+                                currentLevel.push(node);
+                                
+                                // 将节点添加到pathMap以便快速查找
+                                pathMap.set(currentPath, node);
+                            }
+                            
+                            // 更新当前级别为此节点的子级
+                            currentLevel = node.children;
+                        });
+                        
+                        // 文件节点
+                        currentLevel.push({
+                            name: fileName,
+                            path: file.filePath,
+                            type: 'file',
+                            filePath: file.filePath
+                        });
+                    });
+                    
+                    return tree;
+                });
+                
+                // 选择文件预览
+                const selectFile = (filePath) => {
+                    const file = parsedFiles.value.find(f => f.filePath === filePath);
+                    if (file) {
+                        selectedFile.value = file;
+                        activeTab.value = 'preview';
+                    }
+                };
+                
+                // 复制文件内容
+                const copyFileContent = () => {
+                    if (!selectedFile.value) return;
+                    
+                    navigator.clipboard.writeText(selectedFile.value.content)
+                        .then(() => {
+                            showNotification('success', '复制成功', '文件内容已复制到剪贴板');
+                        })
+                        .catch(err => {
+                            showNotification('error', '复制失败', err.message || '请手动选择文本并复制');
+                        });
+                };
+                
+                // 下载文件
+                const downloadFiles = () => {
+                    if (parsedFiles.value.length === 0) return;
+                    
+                    try {
+                        const zip = new JSZip();
+                        const rootFolderName = projectInfo.value.projectName || '项目';
+                        
+                        // 添加文件到zip
+                        parsedFiles.value.forEach(file => {
+                            zip.file(`${rootFolderName}/${file.filePath}`, file.content);
+                        });
+                        
+                        // 生成zip并下载
+                        zip.generateAsync({ type: 'blob' })
+                            .then(content => {
+                                // 创建一个下载链接并模拟点击
+                                const link = document.createElement('a');
+                                // 创建URL对象
+                                const url = URL.createObjectURL(content);
+                                link.href = url;
+                                link.download = `${rootFolderName}.zip`;
+                                // 将链接添加到文档中
+                                document.body.appendChild(link);
+                                // 模拟点击
+                                link.click();
+                                // 移除链接
+                                setTimeout(() => {
+                                    document.body.removeChild(link);
+                                    // 释放URL对象
+                                    URL.revokeObjectURL(url);
+                                }, 100);
+                                
+                                showNotification('success', '下载成功', `${rootFolderName}.zip 已开始下载`);
+                            });
+                    } catch (error) {
+                        showNotification('error', '下载失败', error.message);
+                    }
+                };
+                
+                // 获取文件语言
+                const getLanguage = (fileName) => {
+                    const ext = fileName.split('.').pop().toLowerCase();
+                    const langMap = {
+                        'js': 'JavaScript',
+                        'jsx': 'React JSX',
+                        'ts': 'TypeScript',
+                        'tsx': 'React TSX',
+                        'css': 'CSS',
+                        'scss': 'SCSS',
+                        'html': 'HTML',
+                        'json': 'JSON',
+                        'md': 'Markdown',
+                        'py': 'Python',
+                        'sql': 'SQL',
+                        'prisma': 'Prisma'
+                    };
+                    
+                    return langMap[ext] || ext.toUpperCase();
+                };
+                
+                return {
+                    // 主题切换
+                    isDarkTheme,
+                    toggleTheme,
+                    
+                    // 基础数据
+                    projectName,
+                    requirements,
+                    customTech,
+                    techOptions,
+                    selectedTechs,
+                    toggleTech,
+                    projectTheme,
+                    
+                    // 标签页
+                    activeTab,
+                    tabs,
+                    
+                    // 提示词生成
+                    generatedPrompt,
+                    generatePrompt,
+                    copyPrompt,
+                    
+                    // 代码解析
+                    parseInput,
+                    parseError,
+                    parseCode,
+                    parsedFiles,
+                    
+                    // 文件树
+                    fileTree,
+                    
+                    // 文件预览
+                    selectedFile,
+                    selectFile,
+                    copyFileContent,
+                    getLanguage,
+                    
+                    // 项目信息
+                    projectInfo,
+                    
+                    // 下载
+                    downloadFiles,
+                    
+                    // 通知
+                    notification,
+                    showNotification
+                };
+            }
+        }).mount('#app');
+    </script>
+
+
+</body></html>
