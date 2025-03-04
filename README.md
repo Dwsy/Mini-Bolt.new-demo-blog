@@ -1,4 +1,13 @@
-`使用https://poe.com/App-Creator，claude3.7 支持单次200k输出。每日3000积分限时24积分一次，建议每次最多追问一次，长上下文积分另算。`
+
+使用https://poe.com/App-Creator，claude3.7 支持单次200k输出。
+每日3000积分限时24积分一次，建议每次最多追问一次，长上下文积分另算。
+
+[Mini-Bolt.new](https://mini-bolt-new.pages.dev/)
+
+[DemoPrompt](prompt.md)
+
+[DemoReply](reply.md)
+
 ------
 # 个人博客
 
