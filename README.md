@@ -2,7 +2,14 @@
 使用https://poe.com/App-Creator  claude3.7 。
 每日3000积分限时24积分一次，建议每次最多追问一次，长上下文积分另算。
 
-[Mini-Bolt.new](https://mini-bolt-new.pages.dev/)
+[在线使用Mini-Bolt.new](https://mini-bolt-new.pages.dev/) [git地址](https://github.com/Dwsy/Mini-Bolt.new)
+
+
+
+
+
+
+
 
 [DemoPrompt](prompt.md)
 
